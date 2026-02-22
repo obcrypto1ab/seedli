@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seedli AI | Intelligent Investing</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDKs (Compatibility) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* Dynamic Theme Variables */
+        :root {
+            --primary: #10b981;
+            --secondary: #0f172a;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .theme-text { color: var(--primary); }
+        .theme-bg { background-color: var(--primary); }
+        .theme-border { border-color: var(--primary); }
+        
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Markdown-like styling for AI response */
+        .prose p { margin-bottom: 0.5rem; }
+        .prose ul { list-style-type: disc; margin-left: 1.5rem; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+
+    <!-- Navigation -->
+    <nav class="border-b border-gray-800 bg-gray-900/95 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <img id="navLogo" src="" alt="Logo" class="h-8 w-auto hidden">
+                    <span id="siteName" class="font-bold text-xl tracking-tight">Seedli AI</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <a href="#/" class="text-sm font-medium hover:text-emerald-400 transition">Investor Hub</a>
+                    <a href="#/admin" class="text-sm font-medium text-gray-400 hover:text-white transition"><i class="fas fa-lock"></i></a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main id="app" class="flex-grow"></main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 bg-gray-950 py-8 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
+            <p>&copy; <span id="year"></span> Seedli Capital. All rights reserved.</p>
+            <p class="mt-2 text-xs">Disclaimer: Not financial advice. AI responses may vary.</p>
+        </div>
+    </footer>
+
+    <!-- Templates -->
+
+    <!-- 1. PUBLIC HOME -->
+    <template id="tpl-home">
+        <!-- Hero -->
+        <div id="heroSection" class="relative py-20 bg-cover bg-center">
+            <div class="absolute inset-0 bg-black/80"></div>
+            <div class="relative max-w-4xl mx-auto px-4 text-center">
+                <h1 id="heroTitle" class="text-4xl md:text-5xl font-extrabold text-white mb-4"></h1>
+                <p id="heroSubtitle" class="text-xl text-gray-300 mb-8"></p>
+                <div class="flex justify-center gap-4">
+                    <button onclick="scrollToId('chatSection')" class="theme-bg text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:opacity-90 transition">
+                        <i class="fas fa-robot mr-2"></i> Ask AI
+                    </button>
+                    <button onclick="scrollToId('calcSection')" class="bg-gray-700 text-white px-6 py-3 rounded-lg font-bold hover:bg-gray-600 transition">
+                        <i class="fas fa-calculator mr-2"></i> ROI Calc
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Chat -->
+        <div id="chatSection" class="max-w-4xl mx-auto px-4 py-16">
+            <div class="bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-700">
+                <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+                    <h2 class="text-xl font-bold"><i class="fas fa-brain theme-text mr-2"></i> Investor Assistant</h2>
+                    <span class="text-xs bg-emerald-900 text-emerald-300 px-2 py-1 rounded">Beta</span>
+                </div>
+                <div id="chatHistory" class="p-6 h-96 overflow-y-auto space-y-4 bg-gray-900/50">
+                    <div class="flex gap-3">
+                        <div class="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center flex-shrink-0"><i class="fas fa-robot"></i></div>
+                        <div class="bg-gray-800 p-3 rounded-lg rounded-tl-none text-sm text-gray-200">
+                            Hello! I can answer questions about Seedli using official documentation. How can I help?
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 border-t border-gray-700 bg-gray-800">
+                    <p class="text-xs text-gray-500 mb-2 text-center">AI can make mistakes. Check official sources.</p>
+                    <form id="chatForm" class="flex gap-2">
+                        <input type="text" id="chatInput" class="flex-1 bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition" placeholder="Ask about vesting, roadmap, or tokenomics...">
+                        <button type="submit" class="theme-bg text-white px-6 rounded-lg font-bold hover:opacity-90 transition">Send</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calculator -->
+        <div id="calcSection" class="bg-gray-800 py-16">
+            <div class="max-w-4xl mx-auto px-4">
+                <h2 class="text-3xl font-bold text-center mb-8">Presale Calculator</h2>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="bg-gray-900 p-6 rounded-xl border border-gray-700">
+                        <label class="block text-sm font-medium text-gray-400 mb-2">Investment Amount (USD)</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-3 text-gray-500">$</span>
+                            <input type="number" id="investInput" class="w-full bg-gray-800 border border-gray-600 rounded-lg pl-8 pr-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="1000">
+                        </div>
+                        <button id="btnCalc" class="w-full mt-4 theme-bg text-white py-3 rounded-lg font-bold hover:opacity-90 transition">Calculate Schedule</button>
+                        
+                        <div class="mt-6 space-y-2 text-sm text-gray-400">
+                            <div class="flex justify-between"><span>Price per Token:</span> <span class="text-white">$0.02</span></div>
+                            <div class="flex justify-between"><span>TGE Unlock:</span> <span class="text-white">10%</span></div>
+                            <div class="flex justify-between"><span>Vesting:</span> <span class="text-white">6 Months Linear</span></div>
+                        </div>
+                    </div>
+                    <div id="calcResults" class="bg-gray-900 p-6 rounded-xl border border-gray-700 hidden">
+                        <h3 class="font-bold text-lg mb-4 text-emerald-400">Your Vesting Schedule</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead class="text-xs text-gray-500 uppercase bg-gray-800">
+                                    <tr>
+                                        <th class="px-2 py-2">Event</th>
+                                        <th class="px-2 py-2">Tokens</th>
+                                        <th class="px-2 py-2">Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="vestingTableBody" class="text-gray-300"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- 2. ADMIN AUTH -->
+    <template id="tpl-login">
+        <div class="flex items-center justify-center min-h-[80vh]">
+            <div class="w-full max-w-md bg-gray-800 p-8 rounded-xl shadow-2xl border border-gray-700">
+                <h2 class="text-2xl font-bold mb-6 text-center text-white">Admin Access</h2>
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Email</label>
+                        <input type="email" id="adminEmail" class="w-full bg-gray-900 border border-gray-700 rounded p-3 text-white" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Password</label>
+                        <input type="password" id="adminPass" class="w-full bg-gray-900 border border-gray-700 rounded p-3 text-white" required>
+                    </div>
+                    <p id="loginError" class="text-red-500 text-sm hidden"></p>
+                    <button type="submit" class="w-full theme-bg text-white py-3 rounded font-bold hover:opacity-90">Login</button>
+                </form>
+            </div>
+        </div>
+    </template>
+
+    <!-- 3. ADMIN DASHBOARD -->
+    <template id="tpl-admin">
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold">Admin Dashboard</h1>
+                <button id="btnLogout" class="bg-red-900/50 text-red-300 px-4 py-2 rounded border border-red-800 hover:bg-red-900">Logout</button>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex gap-2 border-b border-gray-700 mb-6 overflow-x-auto">
+                <button onclick="switchAdminTab('branding')" class="admin-tab px-4 py-2 text-sm font-medium border-b-2 border-emerald-500 text-emerald-400">Branding</button>
+                <button onclick="switchAdminTab('content')" class="admin-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white">Content (FAQs)</button>
+                <button onclick="switchAdminTab('settings')" class="admin-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white">Settings</button>
+            </div>
+
+            <!-- Tab: Branding -->
+            <div id="tab-branding" class="admin-section space-y-6">
+                <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                    <h3 class="text-xl font-bold mb-4">Site Appearance</h3>
+                    <form id="brandingForm" class="space-y-4">
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm mb-1">Site Name</label>
+                                <input type="text" name="siteName" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white">
+                            </div>
+                            <div>
+                                <label class="block text-sm mb-1">Primary Color (Hex)</label>
+                                <input type="color" name="primaryColor" class="w-full h-10 bg-gray-900 border border-gray-600 rounded cursor-pointer">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1">Hero Title</label>
+                            <input type="text" name="heroTitle" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1">Background Image URL</label>
+                            <div class="flex gap-2">
+                                <input type="text" name="heroBgUrl" id="bgUrlInput" class="flex-1 bg-gray-900 border border-gray-600 rounded p-2 text-white">
+                                <label class="cursor-pointer bg-gray-700 px-3 py-2 rounded text-sm flex items-center hover:bg-gray-600">
+                                    <i class="fas fa-upload mr-2"></i> Upload
+                                    <input type="file" id="bgUpload" class="hidden" accept="image/*">
+                                </label>
+                            </div>
+                            <p id="uploadStatus" class="text-xs text-yellow-400 mt-1"></p>
+                        </div>
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">Save Branding</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tab: Content -->
+            <div id="tab-content" class="admin-section hidden space-y-6">
+                <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                    <h3 class="text-xl font-bold mb-4">Add FAQ</h3>
+                    <form id="faqForm" class="space-y-4">
+                        <input type="text" id="faqQ" placeholder="Question" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white" required>
+                        <textarea id="faqA" placeholder="Answer" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white h-24" required></textarea>
+                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500">Add FAQ</button>
+                    </form>
+                </div>
+                
+                <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                    <h3 class="text-xl font-bold mb-4">Existing FAQs</h3>
+                    <div id="faqList" class="space-y-2"></div>
+                </div>
+            </div>
+
+            <!-- Tab: Settings -->
+            <div id="tab-settings" class="admin-section hidden space-y-6">
+                <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                    <h3 class="text-xl font-bold mb-4">Feature Toggles</h3>
+                    <div id="featureToggles" class="space-y-4">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </template>
+
+    <script>
+        // --- CONFIGURATION ---
+        const firebaseConfig = {
+             // REPLACE WITH YOUR FIREBASE CONFIG
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "...",
+            appId: "..."
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const functionsUrl = "/api"; // Proxy configured in firebase.json
+
+        // --- STATE & ROUTER ---
+        const state = {
+            user: null,
+            config: {},
+            isAdmin: false
+        };
+
+        const router = () => {
+            const hash = window.location.hash || '#/';
+            const app = document.getElementById('app');
+            app.innerHTML = '';
+
+            if (hash === '#/admin') {
+                if (state.user) {
+                    // Check if actually admin
+                    checkAdminStatus().then(isAdmin => {
+                        if(isAdmin) {
+                            app.appendChild(document.getElementById('tpl-admin').content.cloneNode(true));
+                            initAdminPanel();
+                        } else {
+                            window.location.hash = '#/';
+                        }
+                    });
+                } else {
+                    app.appendChild(document.getElementById('tpl-login').content.cloneNode(true));
+                    initLogin();
+                }
+            } else {
+                app.appendChild(document.getElementById('tpl-home').content.cloneNode(true));
+                initHome();
+            }
+        };
+
+        window.addEventListener('hashchange', router);
+        
+        // --- AUTH & INIT ---
+        auth.onAuthStateChanged(user => {
+            state.user = user;
+            if (window.location.hash === '#/admin') router();
+        });
+
+        async function checkAdminStatus() {
+            if (!state.user) return false;
+            // Optimistic check (frontend), real security is in Firestore Rules/Functions
+            if(state.user.email === 'info@seedlicapital.com') return true;
+            return false;
+        }
+
+        // --- REALTIME CONFIG LOADER ---
+        db.doc('settings/public').onSnapshot(doc => {
+            if (doc.exists) {
+                const data = doc.data();
+                state.config = data;
+                applyBranding(data);
+            }
+        });
+
+        function applyBranding(data) {
+            const root = document.documentElement;
+            if(data.primaryColor) root.style.setProperty('--primary', data.primaryColor);
+            
+            const title = document.getElementById('heroTitle');
+            if(title && data.heroTitle) title.textContent = data.heroTitle;
+            
+            const sub = document.getElementById('heroSubtitle');
+            if(sub && data.heroSubtitle) sub.textContent = data.heroSubtitle;
+            
+            const siteName = document.getElementById('siteName');
+            if(siteName && data.siteName) siteName.textContent = data.siteName;
+
+            const hero = document.getElementById('heroSection');
+            if(hero && data.heroBgUrl) hero.style.backgroundImage = `url('${data.heroBgUrl}')`;
+        }
+
+        // --- PUBLIC FEATURES ---
+        function initHome() {
+            applyBranding(state.config);
+            document.getElementById('year').textContent = new Date().getFullYear();
+
+            // Chat Logic
+            const chatForm = document.getElementById('chatForm');
+            if (chatForm) {
+                chatForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const input = document.getElementById('chatInput');
+                    const question = input.value.trim();
+                    if(!question) return;
+
+                    addChatBubble(question, true);
+                    input.value = '';
+                    
+                    // Loader
+                    const loaderId = addChatLoader();
+
+                    try {
+                        const res = await fetch(`${functionsUrl}/ask`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ question })
+                        });
+                        const data = await res.json();
+                        removeChatBubble(loaderId);
+                        
+                        if(data.error) throw new Error(data.error);
+                        addChatBubble(data.answer, false);
+                    } catch (err) {
+                        removeChatBubble(loaderId);
+                        addChatBubble("Sorry, I encountered an error: " + err.message, false);
+                    }
+                });
+            }
+
+            // Calc Logic
+            const btnCalc = document.getElementById('btnCalc');
+            if (btnCalc) {
+                btnCalc.addEventListener('click', async () => {
+                    const amt = document.getElementById('investInput').value;
+                    try {
+                        const res = await fetch(`${functionsUrl}/calc`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ investmentAmount: amt })
+                        });
+                        const data = await res.json();
+                        if(data.error) throw new Error(data.error);
+                        
+                        const tbody = document.getElementById('vestingTableBody');
+                        tbody.innerHTML = '';
+                        data.schedule.forEach(row => {
+                            tbody.innerHTML += `
+                                <tr class="border-b border-gray-700">
+                                    <td class="px-2 py-2">${row.month}</td>
+                                    <td class="px-2 py-2 text-emerald-400">${row.tokens}</td>
+                                    <td class="px-2 py-2">$${row.value}</td>
+                                </tr>`;
+                        });
+                        document.getElementById('calcResults').classList.remove('hidden');
+                    } catch (err) {
+                        alert(err.message);
+                    }
+                });
+            }
+        }
+
+        function addChatBubble(text, isUser) {
+            const hist = document.getElementById('chatHistory');
+            const div = document.createElement('div');
+            div.className = `flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`;
+            
+            const icon = isUser ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
+            const color = isUser ? 'bg-gray-700' : 'bg-emerald-600';
+            const bubbleColor = isUser ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-800 text-gray-200 rounded-tl-none';
+
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full ${color} flex items-center justify-center flex-shrink-0">${icon}</div>
+                <div class="p-3 rounded-lg ${bubbleColor} text-sm max-w-[80%] prose">${markedText(text)}</div>
+            `;
+            hist.appendChild(div);
+            hist.scrollTop = hist.scrollHeight;
+        }
+
+        function addChatLoader() {
+            const id = 'loader-' + Date.now();
+            const hist = document.getElementById('chatHistory');
+            const div = document.createElement('div');
+            div.id = id;
+            div.className = "flex gap-3";
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center flex-shrink-0"><i class="fas fa-robot"></i></div>
+                <div class="bg-gray-800 p-3 rounded-lg rounded-tl-none"><div class="loader"></div></div>
+            `;
+            hist.appendChild(div);
+            hist.scrollTop = hist.scrollHeight;
+            return id;
+        }
+
+        function removeChatBubble(id) {
+            const el = document.getElementById(id);
+            if(el) el.remove();
+        }
+        
+        // Simple markdown parser
+        function markedText(text) {
+             return text.replace(/\n/g, '<br>');
+        }
+
+        function scrollToId(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- ADMIN FEATURES ---
+        function initLogin() {
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('adminEmail').value;
+                const pass = document.getElementById('adminPass').value;
+                try {
+                    await auth.signInWithEmailAndPassword(email, pass);
+                } catch (err) {
+                    const errEl = document.getElementById('loginError');
+                    errEl.textContent = err.message;
+                    errEl.classList.remove('hidden');
+                }
+            });
+        }
+
+        function initAdminPanel() {
+            // Logout
+            document.getElementById('btnLogout').addEventListener('click', () => auth.signOut());
+
+            // 1. Branding Form Loader
+            const brandingForm = document.getElementById('brandingForm');
+            db.doc('settings/public').get().then(doc => {
+                if(doc.exists) {
+                    const d = doc.data();
+                    brandingForm.siteName.value = d.siteName || '';
+                    brandingForm.primaryColor.value = d.primaryColor || '#10b981';
+                    brandingForm.heroTitle.value = d.heroTitle || '';
+                    brandingForm.heroBgUrl.value = d.heroBgUrl || '';
+                }
+            });
+
+            brandingForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const data = {
+                    siteName: brandingForm.siteName.value,
+                    primaryColor: brandingForm.primaryColor.value,
+                    heroTitle: brandingForm.heroTitle.value,
+                    heroBgUrl: brandingForm.heroBgUrl.value
+                };
+                await db.doc('settings/public').set(data, { merge: true });
+                alert('Branding saved!');
+            });
+
+            // Image Upload (Secure Signed URL)
+            document.getElementById('bgUpload').addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const status = document.getElementById('uploadStatus');
+                status.textContent = "Getting secure signature...";
+
+                try {
+                    // 1. Get Signature
+                    const token = await auth.currentUser.getIdToken();
+                    const signRes = await fetch(`${functionsUrl}/imagekit/sign`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    if(!signRes.ok) throw new Error("Sign failed");
+                    const authParams = await signRes.json();
+
+                    // 2. Upload to ImageKit
+                    status.textContent = "Uploading...";
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('fileName', file.name);
+                    formData.append('signature', authParams.signature);
+                    formData.append('token', authParams.token);
+                    formData.append('expire', authParams.expire);
+                    formData.append('publicKey', authParams.publicKey);
+
+                    const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await uploadRes.json();
+                    document.getElementById('bgUrlInput').value = result.url;
+                    status.textContent = "Upload complete!";
+
+                } catch (err) {
+                    console.error(err);
+                    status.textContent = "Error: " + err.message;
+                }
+            });
+            
+            // 2. FAQ Logic
+            const loadFaqs = () => {
+                db.collection('faq').onSnapshot(snap => {
+                    const list = document.getElementById('faqList');
+                    list.innerHTML = '';
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        list.innerHTML += `
+                            <div class="bg-gray-900 p-3 rounded flex justify-between">
+                                <div>
+                                    <div class="font-bold text-sm">${d.question}</div>
+                                    <div class="text-xs text-gray-400 truncate w-64">${d.answer}</div>
+                                </div>
+                                <button onclick="deleteFaq('${doc.id}')" class="text-red-500 hover:text-red-400"><i class="fas fa-trash"></i></button>
+                            </div>
+                        `;
+                    });
+                });
+            };
+            
+            document.getElementById('faqForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await db.collection('faq').add({
+                    question: document.getElementById('faqQ').value,
+                    answer: document.getElementById('faqA').value,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                e.target.reset();
+            });
+
+            loadFaqs();
+        }
+
+        // Global handlers needed for onclick attributes
+        window.switchAdminTab = (tabName) => {
+            document.querySelectorAll('.admin-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            
+            document.querySelectorAll('.admin-tab').forEach(el => {
+                el.classList.remove('border-emerald-500', 'text-emerald-400');
+                el.classList.add('border-transparent', 'text-gray-400');
+            });
+            event.target.classList.remove('border-transparent', 'text-gray-400');
+            event.target.classList.add('border-emerald-500', 'text-emerald-400');
+        };
+
+        window.deleteFaq = async (id) => {
+            if(confirm('Delete this FAQ?')) {
+                await db.collection('faq').doc(id).delete();
+            }
+        };
+
+        // Initial Router Call
+        if (!window.location.hash) window.location.hash = '#/';
+        router();
+
+    </script>
+</body>
+</html>
